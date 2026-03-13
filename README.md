@@ -44,6 +44,9 @@ The direct-response workflow currently includes three core strategy families, ea
 
 1. The embedding-based workflow does not show robust out-of-sample performance in the included experiments. In `outputs/grid_search_linear_modes_v2`, the `mean` and `sum_head` linear modes have clearly better training IC than validation IC, and their validation rank IC is generally near zero or negative. The `article` mode is more stable, but still weak out of sample. Overall, the linear-head workflow looks fragile and overfit-prone on this dataset.
 2. In the direct-response workflow, the most promising-looking variant before fixing the news timestamp issue was `outputs/llm_response_backtest_promptv2_tok3/strict_yes_or_unknown_vs_no_or_unknown_non_small_cap`. However, after correcting the timestamp problem in the news dataset and rerunning the backtest, the stronger-looking effect largely disappears, and the corrected run in `outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_non_small_cap` no longer beats the `SPY` benchmark in the included plot.
+
+![Corrected timestamp backtest: long_only_yes_no_no_non_small_cap](outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_non_small_cap/pnl.png)
+
 3. Although `Can ChatGPT Forecast Stock Price Movements?` reports stronger Sharpe in small-cap stocks, EODHD's small-cap news coverage appears too thin for that result to carry over cleanly here. In several `*_small_cap` runs there are periods with fewer than `10` investable names after filtering, so the strategy does not trade and the PnL curve stays flat for long stretches.
 
 ## Conclusion
