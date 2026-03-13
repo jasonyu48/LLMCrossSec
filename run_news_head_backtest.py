@@ -464,15 +464,18 @@ def aggregate_predictions(
 def build_targets_and_meta(
     pred_df: pd.DataFrame,
     symbols: pd.Index,
+    trade_dates: pd.DatetimeIndex,
     q: float,
     min_news_pool: int,
 ) -> tuple[dict[pd.Timestamp, pd.Series], dict[pd.Timestamp, dict], pd.Series]:
     target_by_date: dict[pd.Timestamp, pd.Series] = {}
     meta_by_date: dict[pd.Timestamp, dict] = {}
     rebalance_dates: list[pd.Timestamp] = []
+    groups = {int(k): grp for k, grp in pred_df.groupby("trade_date", sort=False)}
 
-    for trade_date_int, grp in pred_df.groupby("trade_date", sort=True):
-        dt = yyyymmdd_to_ts(int(trade_date_int))
+    for dt in trade_dates:
+        trade_date_int = int(pd.Timestamp(dt).strftime("%Y%m%d"))
+        grp = groups.get(trade_date_int, pred_df.iloc[0:0])
         eligible_grp = grp[grp["signal_eligible"]].copy()
         n_pool = len(eligible_grp)
         k = int(np.floor(float(q) * n_pool))
@@ -494,6 +497,20 @@ def build_targets_and_meta(
 
     rebalance_mask = pd.Series(True, index=pd.DatetimeIndex(sorted(rebalance_dates)))
     return target_by_date, meta_by_date, rebalance_mask
+
+
+def build_backtest_trade_dates(
+    symbol_states: dict[str, SymbolState],
+    start_date: int,
+    end_date: int,
+) -> pd.DatetimeIndex:
+    trade_dates_int: set[int] = set()
+    for st in symbol_states.values():
+        vals = st.trade_dates_int
+        mask = (vals >= int(start_date)) & (vals <= int(end_date))
+        if mask.any():
+            trade_dates_int.update(int(v) for v in vals[mask].tolist())
+    return pd.DatetimeIndex(sorted(yyyymmdd_to_ts(v) for v in trade_dates_int))
 
 
 def build_ret_and_elig_matrices(
@@ -556,7 +573,11 @@ def main() -> None:
         raise RuntimeError("No eligible prediction rows for backtest after filters.")
 
     symbols = pd.Index(sorted(bt_df["symbol"].unique().tolist()))
-    trade_dates = pd.DatetimeIndex(sorted({yyyymmdd_to_ts(int(v)) for v in bt_df["trade_date"].unique()}))
+    trade_dates = build_backtest_trade_dates(
+        symbol_states=symbol_states,
+        start_date=int(args.start_date),
+        end_date=int(args.end_date),
+    )
 
     ret_d, elig_by_date = build_ret_and_elig_matrices(
         symbol_states=symbol_states,
@@ -569,6 +590,7 @@ def main() -> None:
     target_by_date, meta_by_date, rebalance_mask = build_targets_and_meta(
         pred_df=pred_df,
         symbols=symbols,
+        trade_dates=trade_dates,
         q=float(args.long_short_quantile),
         min_news_pool=int(args.min_news_pool),
     )

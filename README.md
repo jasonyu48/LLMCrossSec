@@ -49,6 +49,8 @@ The direct-response workflow currently includes three core strategy families, ea
 
 3. Although `Can ChatGPT Forecast Stock Price Movements?` reports stronger Sharpe in small-cap stocks, EODHD's small-cap news coverage appears too thin for that result to carry over cleanly here. In several `*_small_cap` runs there are periods with fewer than `10` investable names after filtering, so the strategy does not trade and the PnL curve stays flat for long stretches.
 
+![Corrected timestamp backtest: long_only_yes_no_no_small_cap](outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_small_cap/pnl.png)
+
 ## Conclusion
 
 The main takeaway from this repo is that news-based cross-sectional trading is extremely sensitive to the data source. Quality (especially correctness of news publication time) and completeness of the underlying news matters.

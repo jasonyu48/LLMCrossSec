@@ -697,18 +697,35 @@ def filter_pred_df_by_size_bucket(pred_df: pd.DataFrame, size_bucket: str | None
     return pred_df[pred_df["size_bucket"] == size_bucket].copy()
 
 
+def build_backtest_trade_dates(
+    symbol_states: dict[str, SymbolState],
+    start_date: int,
+    end_date: int,
+) -> pd.DatetimeIndex:
+    trade_dates_int: set[int] = set()
+    for st in symbol_states.values():
+        vals = st.trade_dates_int
+        mask = (vals >= int(start_date)) & (vals <= int(end_date))
+        if mask.any():
+            trade_dates_int.update(int(v) for v in vals[mask].tolist())
+    return pd.DatetimeIndex(sorted(yyyymmdd_to_ts(v) for v in trade_dates_int))
+
+
 def build_targets_strict_unknown_filtered(
     pred_df: pd.DataFrame,
     symbols: pd.Index,
+    trade_dates: pd.DatetimeIndex,
     min_news_pool: int,
     min_short_count: int,
 ) -> tuple[dict[pd.Timestamp, pd.Series], dict[pd.Timestamp, dict], pd.Series]:
     target_by_date: dict[pd.Timestamp, pd.Series] = {}
     meta_by_date: dict[pd.Timestamp, dict] = {}
     rebalance_dates: list[pd.Timestamp] = []
+    groups = {int(k): grp for k, grp in pred_df.groupby("trade_date", sort=False)}
 
-    for trade_date_int, grp in pred_df.groupby("trade_date", sort=True):
-        dt = yyyymmdd_to_ts(int(trade_date_int))
+    for dt in trade_dates:
+        trade_date_int = int(pd.Timestamp(dt).strftime("%Y%m%d"))
+        grp = groups.get(trade_date_int, pred_df.iloc[0:0])
         eligible_grp = grp[grp["signal_eligible"]].copy()
         n_pool = len(eligible_grp)
         long_grp = eligible_grp[eligible_grp["strict_long_candidate"]]
@@ -741,15 +758,18 @@ def build_targets_strict_unknown_filtered(
 def build_targets_paper_like(
     pred_df: pd.DataFrame,
     symbols: pd.Index,
+    trade_dates: pd.DatetimeIndex,
     min_news_pool: int,
     min_short_count: int,
 ) -> tuple[dict[pd.Timestamp, pd.Series], dict[pd.Timestamp, dict], pd.Series]:
     target_by_date: dict[pd.Timestamp, pd.Series] = {}
     meta_by_date: dict[pd.Timestamp, dict] = {}
     rebalance_dates: list[pd.Timestamp] = []
+    groups = {int(k): grp for k, grp in pred_df.groupby("trade_date", sort=False)}
 
-    for trade_date_int, grp in pred_df.groupby("trade_date", sort=True):
-        dt = yyyymmdd_to_ts(int(trade_date_int))
+    for dt in trade_dates:
+        trade_date_int = int(pd.Timestamp(dt).strftime("%Y%m%d"))
+        grp = groups.get(trade_date_int, pred_df.iloc[0:0])
         eligible_grp = grp[grp["signal_eligible"]].copy()
         n_pool = len(eligible_grp)
         long_grp = eligible_grp[eligible_grp["paper_score"] > 0]
@@ -780,14 +800,17 @@ def build_targets_paper_like(
 def build_targets_long_only_yes_no_no(
     pred_df: pd.DataFrame,
     symbols: pd.Index,
+    trade_dates: pd.DatetimeIndex,
     min_news_pool: int,
 ) -> tuple[dict[pd.Timestamp, pd.Series], dict[pd.Timestamp, dict], pd.Series]:
     target_by_date: dict[pd.Timestamp, pd.Series] = {}
     meta_by_date: dict[pd.Timestamp, dict] = {}
     rebalance_dates: list[pd.Timestamp] = []
+    groups = {int(k): grp for k, grp in pred_df.groupby("trade_date", sort=False)}
 
-    for trade_date_int, grp in pred_df.groupby("trade_date", sort=True):
-        dt = yyyymmdd_to_ts(int(trade_date_int))
+    for dt in trade_dates:
+        trade_date_int = int(pd.Timestamp(dt).strftime("%Y%m%d"))
+        grp = groups.get(trade_date_int, pred_df.iloc[0:0])
         eligible_grp = grp[grp["signal_eligible"]].copy()
         n_pool = len(eligible_grp)
         long_grp = eligible_grp[eligible_grp["strict_long_candidate"]]
@@ -850,6 +873,7 @@ def run_strategy_backtest(
         target_by_date, meta_by_date, rebalance_mask = build_targets_strict_unknown_filtered(
             pred_df=pred_df,
             symbols=symbols,
+            trade_dates=trade_dates,
             min_news_pool=min_news_pool,
             min_short_count=min_short_count,
         )
@@ -857,6 +881,7 @@ def run_strategy_backtest(
         target_by_date, meta_by_date, rebalance_mask = build_targets_paper_like(
             pred_df=pred_df,
             symbols=symbols,
+            trade_dates=trade_dates,
             min_news_pool=min_news_pool,
             min_short_count=min_short_count,
         )
@@ -864,6 +889,7 @@ def run_strategy_backtest(
         target_by_date, meta_by_date, rebalance_mask = build_targets_long_only_yes_no_no(
             pred_df=pred_df,
             symbols=symbols,
+            trade_dates=trade_dates,
             min_news_pool=min_news_pool,
         )
     else:
@@ -1030,7 +1056,11 @@ def main() -> None:
         raise RuntimeError("No eligible prediction rows for backtest after filters.")
 
     symbols = pd.Index(sorted(bt_df["symbol"].unique().tolist()))
-    trade_dates = pd.DatetimeIndex(sorted({yyyymmdd_to_ts(int(v)) for v in bt_df["trade_date"].unique()}))
+    trade_dates = build_backtest_trade_dates(
+        symbol_states=symbol_states,
+        start_date=int(args.start_date),
+        end_date=int(args.end_date),
+    )
 
     base_strategy_names = (
         "strict_yes_or_unknown_vs_no_or_unknown",
@@ -1084,14 +1114,12 @@ def main() -> None:
         bt_df_filtered = pred_df_filtered[pred_df_filtered["signal_eligible"]].copy()
         bt_df_filtered = bt_df_filtered[np.isfinite(bt_df_filtered["target_return"])]
         filtered_symbols = pd.Index(sorted(bt_df_filtered["symbol"].unique().tolist()))
-        filtered_trade_dates = pd.DatetimeIndex(sorted({yyyymmdd_to_ts(int(v)) for v in bt_df_filtered["trade_date"].unique()}))
-
         strategy_result = run_strategy_backtest(
             strategy_name=strategy_name,
             strategy_kind=strategy_kind,
             pred_df=pred_df_filtered,
             symbols=filtered_symbols,
-            trade_dates=filtered_trade_dates,
+            trade_dates=trade_dates,
             symbol_states=symbol_states,
             out_dir=out_dir / strategy_name,
             cost_bps=float(args.cost_bps),
