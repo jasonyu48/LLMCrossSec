@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environments
+.env
+.venv/
+venv/
+env/
+.python-version
+
+# Tooling caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Editor / OS
+.cursor/
+.DS_Store
+
+# Local secrets and machine-specific paths
+EODHD_token
+hf_token
+password
+dataset_path.txt
+
+# Local notes / downloaded references
+*.pdf
+
+# Generated data and artifacts
+*.jsonl
+*.npy
+*.pt
+
+us_universe/
+us_delisted_universe/
+us_universe_merged/
+sp500_baseline_spy/
+
+# Backtest / experiment outputs
+outputs/**
+!outputs/
+!outputs/**/
+!outputs/**/.gitkeep
