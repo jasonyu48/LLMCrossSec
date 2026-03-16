@@ -23,7 +23,8 @@ The direct-response workflow currently includes three core strategy families, ea
 
 ## Implementation Details And Assumptions
 
-- News timestamps are parsed from the EODHD ISO8601 `date` field as UTC timestamps.
+- Number of sigle ticker news used: 817,004 (from 01/01/2020 to 03/07/2026).
+- News timestamps are parsed from the EODHD `date` field as UTC timestamps, assuming the date format is ISO8601.
 - Every article is assigned to a trading day using a `09:00 America/New_York` cutoff, so the signal window is `(previous_trade_day_09:00_NY, current_trade_day_09:00_NY]`.
 - Both the supervised training workflow and the backtests use `open_to_open` return as the target or realized return.
 - In the OHLCV-based tradability filter, a stock-day is eligible only if the stock has a valid opening price for that trading day, its previous day's closing price is at least `$1`, and its average daily dollar trading volume over the prior `20` trading days is at least `$1,000,000`.
