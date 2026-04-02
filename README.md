@@ -43,8 +43,10 @@ The direct-response workflow currently includes three core strategy families, ea
 
 ## Main Results
 
-1. The embedding-based workflow does not show robust out-of-sample performance in the included experiments. In `outputs/grid_search_linear_modes_v2`, the `mean` and `sum_head` linear modes have clearly better training IC than validation IC, and their validation rank IC is generally near zero or negative. The `article` mode is more stable, but still weak out of sample. Overall, the linear-head workflow looks fragile and overfit-prone on this dataset.
-2. In the direct-response workflow, the most promising-looking variant before fixing the news timestamp issue was `outputs/llm_response_backtest_promptv2_tok3/strict_yes_or_unknown_vs_no_or_unknown_non_small_cap`. However, after correcting the timestamp problem in the news dataset and rerunning the backtest, the stronger-looking effect largely disappears, and the corrected run in `outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_non_small_cap` no longer beats the `SPY` benchmark in the included plot.
+1. The embedding-based workflow does not show robust out-of-sample performance in the included experiments. In `outputs/grid_search_linear_modes_v2`, the `mean` and `sum_head` linear modes have clearly better training IC than validation IC, and their validation rank IC is generally near zero or negative. The `article` mode is more stable, but still weak out-of-sample. Overall, the linear-head workflow looks fragile and overfit-prone on this dataset.
+2. In the direct-response workflow, the most promising-looking variant before fixing the news timestamp issue was `outputs/llm_response_backtest_promptv2_tok3/strict_yes_or_unknown_vs_no_or_unknown_non_small_cap`, which achieves a Sharpe ratio of 1.16 and an annualized return of 25.5%.
+3. However, the time stamps of some news from `yfinance` and `investorplace` are cast to the previous midnight of the publication time, resulting in a lookahead error. These errors occur in about 8% of all news.
+4. After correcting the timestamp problem in the news dataset and rerunning the backtest, the corrected run in `outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_non_small_cap` no longer beats the `SPY` benchmark. It reports a Sharpe ratio of 0.67 and an annualized return of 13.5%.
 
 ![Corrected timestamp backtest: long_only_yes_no_no_non_small_cap](outputs/llm_response_backtest_promptv2_tok3_correct_news_time/long_only_yes_no_no_non_small_cap/pnl.png)
 
